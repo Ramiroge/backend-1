@@ -1,8 +1,9 @@
 import express from 'express';
 import { __dirname } from './utils.js';
-import ProductosRoute from './routes/productos.router.js';
-import ViewRouters from './routes/views.route.js';
+import ViewRoute from './routes/views.route.js';
 import ProductManager from './Class/productManager.js';
+import homeRoute from './routes/home.router.js';
+import realtimeproductsRoute from './routes/realTimeProducts.router.js';
 import CartManager from './Class/cartManager.js';
 import handlebars from 'express-handlebars';
 import { Server } from 'socket.io';
@@ -17,8 +18,11 @@ app.set('view engine', 'handlebars');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
-app.use('/api/products', ProductosRoute);
-app.use('/', ViewRouters);
+app.use('/', ViewRoute);
+
+///////////////////////////////////////
+app.use('/', homeRoute);
+app.use('/', realtimeproductsRoute);
 
 
 
@@ -42,68 +46,73 @@ socketServer.on('connection', (socket) => {
         console.log('mensaje recibido: ', data);
     })
 
-    // socket.on('newProduct', async (product) => {
-    //     await productManager.addProduct(product);
-    //     const productos = await productManager.getProductList();
-    //     socketServer.emit('productUpdate', productos);
-    // });
+    socket.on('requestProducts', async ()=>{
+        const products = await productManager.getProductList();
+        socket.emit('productList', products)
+    })
 
-    // socket.on('deleteProduct', async (id) => {
-    //     await productManager.deleteProduct(id);
-    //     const productos = await productManager.getProductList();
-    //     socketServer.emit('productUpdate', productos);
-    // });
+    socket.on('addProduct', async (product) => {
+        await productManager.addProduct(product);
+        const products = await productManager.getProductList();
+        socketServer.emit('productList', products);
+    });
+
+    socket.on('deleteProduct', async (id) => {
+        await productManager.deleteProduct(id);
+        const products = await productManager.getProductList();
+        socketServer.emit('productList', products);
+    });
 
 
 
     
-// Agregar Producto
-// app.post('/api/products', async (req, res) => {
-//     const newProduct = req.body;
-//     await productManager.addProduct(newProduct);
-//     res.status(201).json({ mensaje: 'Producto añadido' });
-// });
+    // Agregar Producto
+    app.post('/api/products', async (req, res) => {
+        const newProduct = req.body;
+        await productManager.addProduct(newProduct);
+        res.status(201).json({ mensaje: 'Producto añadido' });
+    });
 
-// // Actualizar producto
-// app.put('/api/products/:id', async (req, res) =>{
-//     const { id } = req.params;
-//     const productoActualizar = req.body;
-//     await productManager.updateProduct(id, productoActualizar);
-//     res.status(203).json({ mensaje: 'Actualizado'});
-// })
+    // Actualizar producto
+    app.put('/api/products/:id', async (req, res) =>{
+        const { id } = req.params;
+        const productoActualizar = req.body;
+        await productManager.updateProduct(id, productoActualizar);
+        res.status(203).json({ mensaje: 'Actualizado'});
+    })
 
-// // Rutas GET
-// app.get('/api/products', async (req, res) => {
-//     const productList = await productManager.getProductList();
-//     res.status(200).json({ resultado: productList }); 
-// });
+    // Rutas GET
+    app.get('/api/products', async (req, res) => {
+        const productList = await productManager.getProductList();
+        res.status(200).json({ resultado: productList }); 
+    });
 
-// // Ver producto por ID
-// app.get('/api/products/:id', async (req, res) => {
-//     const { id } = req.params
-//     const productFind = await productManager.getProductById(id)
-//     res.status(201).json({ resultado: productFind})
-// })
+    // Ver producto por ID
+    app.get('/api/products/:id', async (req, res) => {
+        const { id } = req.params
+        const productFind = await productManager.getProductById(id)
+        res.status(201).json({ resultado: productFind})
+    })
 
-// // Eliminar producto
-// app.delete('/api/products/:id', async (req, res) => {
-//     const { id } = req.params;
-//     await productManager.deleteProduct(id);
-//     res.status(200).json({ mensaje: 'Producto eliminado' });
-// });
+    // Eliminar producto
+    app.delete('/api/products/:id', async (req, res) => {
+        const { id } = req.params;
+        await productManager.deleteProduct(id);
+        res.status(200).json({ mensaje: 'Producto eliminado' });
+    });
 
 
 
-// // Crear nuevo carrito
-// app.post('/api/carts', async (req, res) => {
-//     const newCart = await cartManager.createCart();
-//     res.status(200).json({ mensaje: 'Carrito creado', carrito: newCart });
-// })
+    // Crear nuevo carrito
+    app.post('/api/carts', async (req, res) => {
+        const newCart = await cartManager.createCart();
+        res.status(200).json({ mensaje: 'Carrito creado', carrito: newCart });
+    })
 
-// //Agregar producto al carrito
-// app.post('/api/carts/:cid/product/:pid', async (req, res) => {
-//     const { cid , pid} = req.params;
-//     await cartManager.addProductOnCart(cid, pid);
-//     res.status(200).json({ mensaje: 'Producto agregado al carrito'});
-// })
+    //Agregar producto al carrito
+    app.post('/api/carts/:cid/product/:pid', async (req, res) => {
+        const { cid , pid} = req.params;
+        await cartManager.addProductOnCart(cid, pid);
+        res.status(200).json({ mensaje: 'Producto agregado al carrito'});
+    })
 })
